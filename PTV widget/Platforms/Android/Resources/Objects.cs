@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace PTV_widget.Platforms.Android.Resources
+{
+	internal record Departure(string RouteName, int RouteNumber, DateTime eta, bool isAtPlatform);
+	internal record Stop(string stop_name, int stop_id, RouteType route_type);
+	internal enum RouteType
+	{
+		//DOUBLE CHECK
+		Train = 0,
+		Tram = 1,
+		Bus = 2,
+		Vline = 3,
+		NightBus = 4,
+		Ferry = 5
+	}
+}
