@@ -1,14 +1,10 @@
-﻿using Microsoft.Maui.Devices.Sensors;
-using Android.App;
+﻿using Android.App;
 using Android.Appwidget;
 using Android.Content;
-using Android.OS;
-using Android.Text.Style;
-using Android.Util;
-using Android.Views;
 using Android.Widget;
+using PTV_widget;
+using PTV_widget.Platforms.Android;
 using PTV_widget.Platforms.Android.Resources;
-using System.ComponentModel.Design;
 
 namespace Maui.Widgets;
 
@@ -23,15 +19,21 @@ public class Widget : AppWidgetProvider
     string route_color = "#000";
     int etaMins = -1;
 
+
 	public override void OnUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds)
     {
         var views = new RemoteViews(context.PackageName, Microsoft.Maui.Resource.Layout.widget);
 
         views.SetOnClickPendingIntent(Microsoft.Maui.Resource.Id.layout_2_1, GetPendingSelfIntent(context, "action.UPDATE"));
+		views.SetViewVisibility(Microsoft.Maui.Resource.Id.indeterminateBar, Android.Views.ViewStates.Visible);
 
+		foreach (var appWidgetId in appWidgetIds)
+		{
+			appWidgetManager.UpdateAppWidget(appWidgetId, views);
+		}
 
-        Stop closestStop = GetClosestStop();
-        Departure departure = GetStopDeparture(closestStop);
+		Stop closestStop = GetClosestStop();
+        Departure departure = APIclient.getNextDeparture(closestStop);
 
         //Update Stop
         if (closestStop.stop_name != stop_name)
@@ -48,7 +50,7 @@ public class Widget : AppWidgetProvider
         if (departure.RouteName != route_name)
         {
             route_name = departure.RouteName;
-            route_color = GetRouteColour(departure.RouteNumber);
+            route_color = GetRouteColour(departure.RouteNumber, closestStop.route_type);
             views.SetInt(Microsoft.Maui.Resource.Id.colourStrip, "setBackgroundColor", Android.Graphics.Color.ParseColor(route_color));
 
 
@@ -82,6 +84,7 @@ public class Widget : AppWidgetProvider
         }
 
 
+		views.SetViewVisibility(Microsoft.Maui.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
         foreach (var appWidgetId in appWidgetIds)
         {
             appWidgetManager.UpdateAppWidget(appWidgetId, views);
@@ -112,22 +115,71 @@ public class Widget : AppWidgetProvider
     internal Stop GetClosestStop()
     {
 		Location loc = GetCurrentLocation().Result;
-
-		return new Stop("Undef", -1, 0);
+		return APIclient.getClosestStop(loc.Longitude, loc.Latitude);
 	}
 
-    internal Departure GetStopDeparture(Stop stop)
+    internal string GetRouteColour(int routeNum, RouteType type)
     {
-        return new Departure("Undef", -1, DateTime.UtcNow,  false);
+		switch(type)
+		{
+			case RouteType.Train:
+				if ((new[] { 1, 2, 7, 9 }).Contains(routeNum))
+					return "#b8bf2e";
+				else if ((new[] { 3, 14, 15 }).Contains(routeNum))
+					return "#ffbe00";
+				else if ((new[] { 4, 11 }).Contains(routeNum))
+					return "#279fd5";
+				else if ((new[] { 5, 8 }).Contains(routeNum))
+					return "#be1014";
+				else if ((new[] { 6, 13, 16, 17 }).Contains(routeNum))
+					return "#3d8825";
+				else if (routeNum == 721)
+					return "#65baf7";
+				else 
+					return "#000000";
+			case RouteType.Tram:
+				switch (routeNum)
+				{
+					case 721:return "#b5c525";
+					case 722: return "#f27f25";
+					case 724: return "#fdd962";
+					case 725: return "#8a4c74";
+					case 887: return "#34bccc";
+					case 897: return "#498057";
+					case 909: return "#05a76e";
+					case 913: return "#af7964";
+					case 940: return "#eb8cb7";
+					case 947: return "#99b5a6";
+					case 958: return "#079bd5";
+					case 976: return "#877bbd";
+					case 1002: return "#bcd433";
+					case 1041: return "#db397f";
+					case 1083: return "#e33f38";
+					case 1880: return "#4f48a3";
+					case 1881: return "#fbba11";
+					case 2903: return "#424244";
+					case 3343: return "#87c3a1";
+					case 8314: return "#028692";
+					case 11529: return "#7f868c";
+					case 11544: return "#004d6c";
+					case 15833: return "#7fd3f1";
+					case 15834: return "#743718";
+					default: return "#000000";
+				}
+			case RouteType.Bus:
+				return "#ff8000";
+			case RouteType.Vline:
+				return "#8f1a95";
+			case RouteType.NightBus:
+				return "#ff8200";
+			default:
+				return "#000000";
+		}
 	}
 
-    internal string GetRouteColour(int routeNum)
-    {
-        return "#000000";
-	}
     internal int calcEta(DateTime dt)
     {
-		return DateTime.UtcNow.Subtract(dt).Minutes;
+		return (int)MathF.Ceiling((float)dt.Subtract(DateTime.Now).TotalSeconds/60f);
 	}
 	public async Task<Location> GetCurrentLocation()
 	{

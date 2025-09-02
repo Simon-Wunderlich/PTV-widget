@@ -18,7 +18,7 @@
       android:layout_centerVertical="true"
         >
 
-  </RelativeLayout>
+  </RelativeLayout> 
   <RelativeLayout
     android:id="@+id/layout_2_1"
     android:clickable="true"
@@ -33,6 +33,13 @@
         android:visibility="visible"
         tools:visibility="visible"
         android:layout_centerVertical="false"/>
+    <ProgressBar
+      android:id="@+id/indeterminateBar"
+android:visibility="invisible"
+      android:layout_width="40px"
+      android:layout_height="40px" 
+      android:layout_alignParentEnd="true"
+      android:layout_marginRight="40px"/>
 
     <TextView
       android:id="@+id/routeName"
