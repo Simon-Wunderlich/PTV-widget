@@ -7,10 +7,6 @@
         <VerticalStackLayout
             Padding="30,0"
             Spacing="25">
-            <Image
-                Source="preview.png"
-                HeightRequest="185"
-                Aspect="AspectFit" />
 
             <Label
                 Text="PTV Widget"
@@ -25,6 +21,11 @@
                 Text="Add the widget to your home screen to get started"
                 Style="{StaticResource SubHeadline}"
                 SemanticProperties.HeadingLevel="Level3" />
+            <Button
+                x:Name="PermBtn"
+                Text="Click here to allow location permissions" 
+                Clicked="RequestLocPerms"
+                HorizontalOptions="Fill" />
         </VerticalStackLayout>
     </ScrollView>
 

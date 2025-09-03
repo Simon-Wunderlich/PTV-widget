@@ -10,15 +10,16 @@ namespace PTV_widget
 		public MainPage()
         {
             InitializeComponent();
-
-            Task.Run(async () =>
-            {
-                var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-                if (status != PermissionStatus.Granted)
-                {
-                    status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-                }
-            });
+        }
+		private async void RequestLocPerms(object? sender, EventArgs e)
+		{
+			var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+			if (status != PermissionStatus.Granted)
+			{
+				status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+			}
+			if (status == PermissionStatus.Granted)
+				PermBtn.Text = "Success!";
 		}
 	}
 }

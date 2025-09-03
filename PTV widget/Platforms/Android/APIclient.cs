@@ -48,12 +48,12 @@ namespace PTV_widget.Platforms.Android
 			return routes;
 		}
 
-		internal static Stop getClosestStop(double _long, double _lat)
+		internal async static Task<Stop> getClosestStop(double _long, double _lat)
 		{
 			using var client = new HttpClient(new Xamarin.Android.Net.AndroidMessageHandler());
 			client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/stops/location/{_lat},{_long}?max_results=1"));
-			var response = client.GetAsync(client.BaseAddress).Result;
-			string jsonString = response.Content.ReadAsStringAsync().Result;
+			var response = await client.GetAsync(client.BaseAddress);
+			string jsonString = await response.Content.ReadAsStringAsync();
 			JObject respObj = JObject.Parse(jsonString);
 
 			int id = int.Parse(respObj["stops"].First()["stop_id"].ToString());
@@ -71,15 +71,15 @@ namespace PTV_widget.Platforms.Android
 			return new Stop(name, id, (RouteType)type, routes);
 		}
 
-		internal static List<Departure> getNextDeparture(Stop stop)
+		internal async static Task<List<Departure>> getNextDeparture(Stop stop)
 		{
 			List<Departure> departures = new List<Departure>();
 			List<string> platforms = new List<string>();
 
 			using var client = new HttpClient(new Xamarin.Android.Net.AndroidMessageHandler());
 			client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/departures/route_type/{(int)stop.route_type}/stop/{stop.stop_id}?max_results=1&expand=0"));
-			var response = client.GetAsync(client.BaseAddress).Result;
-			string jsonString = response.Content.ReadAsStringAsync().Result;
+			var response = await client.GetAsync(client.BaseAddress);
+			string jsonString = await response.Content.ReadAsStringAsync();
 			JObject respObj = JObject.Parse(jsonString);
 
 			int route_num;
