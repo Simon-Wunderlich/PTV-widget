@@ -12,84 +12,129 @@ namespace Maui.Widgets;
 [IntentFilter(new string[] { "android.appwidget.action.APPWIDGET_UPDATE" })]
 [MetaData("android.appwidget.provider", Resource = "@xml/widget")]
 [Service(Exported = true)]
+
 public class Widget : AppWidgetProvider
 {
-    string route_name = "";
-    string stop_name = "";
-    string route_color = "#000";
-    int etaMins = -1;
+    static string route_name = "";
+    static string stop_name = "";
+    static string route_color = "#000";
+    static int etaMins = -1;
+	static int platformNum = 0;
+	static string destination = "";
+	static List<Departure> currentDepartures = new List<Departure>();
+	static Stop closestStop;
 
-
-	public override void OnUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds)
+	public override async void OnUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds)
     {
         var views = new RemoteViews(context.PackageName, Microsoft.Maui.Resource.Layout.widget);
 
-        views.SetOnClickPendingIntent(Microsoft.Maui.Resource.Id.layout_2_1, GetPendingSelfIntent(context, "action.UPDATE"));
-		views.SetViewVisibility(Microsoft.Maui.Resource.Id.indeterminateBar, Android.Views.ViewStates.Visible);
+        views.SetOnClickPendingIntent(Microsoft.Maui.Resource.Id.update, GetPendingSelfIntent(context, "action.UPDATE"));
+        views.SetOnClickPendingIntent(Microsoft.Maui.Resource.Id.nextPlatform, GetPendingSelfIntent(context, "action.NEXT_PLATFORM"));
+        views.SetOnClickPendingIntent(Microsoft.Maui.Resource.Id.prevPlatform, GetPendingSelfIntent(context, "action.PREV_PLATFORM"));
 
+		views.SetViewVisibility(Microsoft.Maui.Resource.Id.indeterminateBar, Android.Views.ViewStates.Visible);
 		foreach (var appWidgetId in appWidgetIds)
 		{
 			appWidgetManager.UpdateAppWidget(appWidgetId, views);
 		}
 
-		Stop closestStop = GetClosestStop();
-        Departure departure = APIclient.getNextDeparture(closestStop);
+		try
+		{
+			closestStop = await GetClosestStop();
+			currentDepartures = APIclient.getNextDeparture(closestStop);
+			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
+		}
+		catch { }
+    }
 
-        //Update Stop
-        if (closestStop.stop_name != stop_name)
-        {
-            stop_name = closestStop.stop_name;
+	private void SetWidgetInfo(RemoteViews views, AppWidgetManager appWidgetManager, int[] appWidgetIds)
+	{
+		try
+		{
+			Departure departure = currentDepartures[platformNum];
+			//Update Stop
+			if (closestStop.stop_name != stop_name || departure.destination != destination)
+			{
+				stop_name = closestStop.stop_name;
+				destination = departure.destination;
+				string output = stop_name + " • " + destination;
+				if (stop_name.Length > 13)
+					stop_name = stop_name.Substring(0, 11) + "...";
+				output = stop_name + " • " + destination;
+				if (output.Length > 27)
+					output = output.Substring(0, 25) + "...";
 
-			if (stop_name.Length > 24)
-				stop_name = stop_name.Substring(0, 22) + "...";
+				views.SetTextViewText(Microsoft.Maui.Resource.Id.stopName, output);
+			}
 
-			views.SetTextViewText(Microsoft.Maui.Resource.Id.stopName, stop_name);
-        }
+			//Update route details
+			if (departure.RouteName != route_name)
+			{
+				route_name = departure.RouteName;
+				route_color = GetRouteColour(departure.RouteNumber, closestStop.route_type);
+				views.SetInt(Microsoft.Maui.Resource.Id.colourStrip, "setBackgroundColor", Android.Graphics.Color.ParseColor(route_color));
 
-        //Update route details
-        if (departure.RouteName != route_name)
-        {
-            route_name = departure.RouteName;
-            route_color = GetRouteColour(departure.RouteNumber, closestStop.route_type);
-            views.SetInt(Microsoft.Maui.Resource.Id.colourStrip, "setBackgroundColor", Android.Graphics.Color.ParseColor(route_color));
+				views.SetTextViewText(Microsoft.Maui.Resource.Id.routeName, route_name);
+			}
+
+			//Update eta
+			string etaStr = " mins";
+			if (departure.isAtPlatform)
+			{
+				views.SetTextViewText(Microsoft.Maui.Resource.Id.minsNum, "NOW");
+				views.SetTextViewText(Microsoft.Maui.Resource.Id.minsText, "");
+			}
+			else
+			{
+				etaMins = calcEta(departure.eta);
+				if (etaMins >= 60)
+				{
+					etaMins /= 60;
+					if (etaMins == 1)
+						etaStr = " hr";
+					else
+						etaStr = " hrs";
+				}
+				else
+				{
+					if (etaMins == 1)
+						etaStr = " min";
+					else
+						etaStr = " mins";
+
+				}
+				views.SetTextViewText(Microsoft.Maui.Resource.Id.minsText, etaStr);
+				views.SetTextViewText(Microsoft.Maui.Resource.Id.minsNum, etaMins.ToString());
 
 
+			}
+
+			int availableSpace = 170 - 10 * etaMins.ToString().Length;
+			availableSpace += 40 - 10 * etaStr.Length;
+			if (departure.isAtPlatform)
+				availableSpace = 160;
 			if (route_name.Length > 5 && route_name.Length < 14)
 			{
-				views.SetFloat(Microsoft.Maui.Resource.Id.routeName, "setTextSize", MathF.Round(160 / route_name.Length));
+				views.SetFloat(Microsoft.Maui.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / route_name.Length));
 			}
 			else if (route_name.Length >= 14)
 			{
-				views.SetFloat(Microsoft.Maui.Resource.Id.routeName, "setTextSize", MathF.Round(160 / 14));
-				route_name = route_name.Substring(0,13) + "...";
+				views.SetFloat(Microsoft.Maui.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / 14));
+				route_name = route_name.Substring(0, 13) + "...";
+			}
+			else
+			{
+				views.SetFloat(Microsoft.Maui.Resource.Id.routeName, "setTextSize", 32f);
 			}
 
-			views.SetTextViewText(Microsoft.Maui.Resource.Id.routeName, route_name);
-        }
-
-        //Update eta
-        if (departure.isAtPlatform)
-        {
-            views.SetTextViewText(Microsoft.Maui.Resource.Id.minsText, "NOW");
-            views.SetTextViewText(Microsoft.Maui.Resource.Id.minsNum, "");
-        }
-        else
-        {
-            etaMins = calcEta(departure.eta);
-            views.SetTextViewText(Microsoft.Maui.Resource.Id.minsNum, etaMins.ToString());
-            if (etaMins == 1)
-                views.SetTextViewText(Microsoft.Maui.Resource.Id.minsText, " min");
-            else
-                views.SetTextViewText(Microsoft.Maui.Resource.Id.minsText, " mins");
-        }
-
-
-		views.SetViewVisibility(Microsoft.Maui.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
-        foreach (var appWidgetId in appWidgetIds)
-        {
-            appWidgetManager.UpdateAppWidget(appWidgetId, views);
-        }
-    }
+			views.SetViewVisibility(Microsoft.Maui.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
+			foreach (var appWidgetId in appWidgetIds)
+			{
+				appWidgetManager.UpdateAppWidget(appWidgetId, views);
+			}
+		}
+		catch { }
+	}
 
 	private PendingIntent GetPendingSelfIntent(Context context, String action)
 	{
@@ -102,19 +147,33 @@ public class Widget : AppWidgetProvider
 	public override void OnReceive(Context? context, Intent? intent)
 	{
         base.OnReceive(context, intent);
-
-        if (intent?.Action == "action.UPDATE")
+		var views = new RemoteViews(context.PackageName, Microsoft.Maui.Resource.Layout.widget);
+		AppWidgetManager appWidgetManager = AppWidgetManager.GetInstance(context);
+		ComponentName thisAppWidgetComponentName = new ComponentName(context.PackageName, this.Class.Name);
+		int[] appWidgetIds = appWidgetManager.GetAppWidgetIds(thisAppWidgetComponentName);
+		if (intent?.Action == "action.UPDATE")
 		{
-			AppWidgetManager appWidgetManager = AppWidgetManager.GetInstance(context);
-			ComponentName thisAppWidgetComponentName = new ComponentName(context.PackageName, this.Class.Name);
-			int[] appWidgetIds = appWidgetManager.GetAppWidgetIds(thisAppWidgetComponentName);
 			OnUpdate(context, appWidgetManager, appWidgetIds);
+		}
+		else if (intent?.Action == "action.NEXT_PLATFORM")
+		{
+			platformNum++;
+			if (platformNum > currentDepartures.Count - 1)
+				platformNum = 0;
+			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
+		}
+		else if (intent?.Action == "action.PREV_PLATFORM")
+		{
+			platformNum--;
+			if (platformNum < 0)
+				platformNum = currentDepartures.Count - 1;
+			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
 		}
 	}
 
-    internal Stop GetClosestStop()
+    internal async Task<Stop> GetClosestStop()
     {
-		Location loc = GetCurrentLocation().Result;
+		Location loc = await GetCurrentLocation();
 		return APIclient.getClosestStop(loc.Longitude, loc.Latitude);
 	}
 
@@ -185,18 +244,6 @@ public class Widget : AppWidgetProvider
 	{
 		try
 		{
-			// Check and request permissions if needed
-			var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-			if (status != PermissionStatus.Granted)
-			{
-				status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-				if (status != PermissionStatus.Granted)
-				{
-					// Handle permission denied
-					return null;
-				}
-			}
-
 			// Get the location
 			Location location = await Geolocation.Default.GetLastKnownLocationAsync();
 
@@ -211,28 +258,8 @@ public class Widget : AppWidgetProvider
 				return null;
 			}
 		}
-		catch (FeatureNotSupportedException fnsEx)
-		{
-			// Handle not supported on device
-			Console.WriteLine($"Location not supported on this device: {fnsEx.Message}");
-			return null;
-		}
-		catch (FeatureNotEnabledException fneEx)
-		{
-			// Handle not enabled in device settings
-			Console.WriteLine($"Location not enabled in settings: {fneEx.Message}");
-			return null;
-		}
-		catch (PermissionException pEx)
-		{
-			// Handle permission denied
-			Console.WriteLine($"Location permission denied: {pEx.Message}");
-			return null;
-		}
 		catch (Exception ex)
 		{
-			// Handle other exceptions
-			Console.WriteLine($"An error occurred: {ex.Message}");
 			return null;
 		}
 	}

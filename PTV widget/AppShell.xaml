@@ -7,7 +7,6 @@
     Title="PTV_widget">
 
     <ShellContent
-        Title="Home"
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
 

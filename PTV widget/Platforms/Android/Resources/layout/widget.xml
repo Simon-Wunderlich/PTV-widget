@@ -20,15 +20,14 @@
 
   </RelativeLayout> 
   <RelativeLayout
-    android:id="@+id/layout_2_1"
-    android:clickable="true"
+    android:id="@id/layout_2_1"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
     <RelativeLayout
       android:id="@+id/colourStrip"
         android:layout_width="match_parent"
         android:layout_height="40px"
-        android:background ="#fcba16"
+        android:background ="#000000"
         android:layout_centerHorizontal="true"
         android:visibility="visible"
         tools:visibility="visible"
@@ -52,7 +51,7 @@ android:visibility="invisible"
       android:paddingLeft ="10dp"
       
       android:fontFamily="DroidSansMono"
-      android:text="Hurstbridge"
+      android:text=""
       android:textSize="32dp"
       android:textFontWeight="500"
       android:textColor="@android:color/black"/>
@@ -62,7 +61,7 @@ android:visibility="invisible"
       android:layout_height="wrap_content"
       android:layout_centerVertical="true"
       android:paddingLeft="10dp"
-      android:text="33"
+      android:text="--"
       android:textSize="20dp"
       android:layout_toLeftOf="@id/minsText"
       android:textFontWeight="800"
@@ -82,13 +81,32 @@ android:visibility="invisible"
       android:textColor="@android:color/white"/>
     <TextView
       android:id="@+id/stopName"
-      android:layout_width="match_parent"
+      android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_alignParentBottom="true"
+      android:layout_alignParentStart="true"
       android:padding="10dp"
+      android:paddingRight="0dp"
       android:fontFamily="DroidSansMono"
-      android:text="Sumner Ave/St Georges Rd"
+      android:text=""
       android:textSize="12dp"
       android:textColor="@android:color/black"/>
+    <RelativeLayout
+      android:id="@+id/update"
+      android:layout_width ="match_parent"
+      android:layout_height="match_parent"
+      android:layout_centerHorizontal="true"
+      android:clickable="true"      />
+    <RelativeLayout
+      android:id="@+id/prevPlatform"
+      android:layout_width="40dp"
+      android:layout_height="match_parent"
+      android:clickable="true"/>
+    <RelativeLayout
+      android:id="@+id/nextPlatform"
+      android:layout_width="40dp"
+      android:layout_height="match_parent"
+      android:layout_alignParentEnd="true"
+      android:clickable="true"/>
   </RelativeLayout>
 </RelativeLayout>

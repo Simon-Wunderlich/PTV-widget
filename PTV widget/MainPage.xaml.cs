@@ -1,24 +1,24 @@
-﻿namespace PTV_widget
+﻿using Newtonsoft.Json;
+
+namespace PTV_widget
 {
     public partial class MainPage : ContentPage
     {
         int count = 0;
+		public Dictionary<string, string> directions = new Dictionary<string, string>();
 
-        public MainPage()
+		public MainPage()
         {
             InitializeComponent();
-        }
 
-        private void OnCounterClicked(object? sender, EventArgs e)
-        {
-            count++;
-
-            if (count == 1)
-                CounterBtn.Text = $"Clicked {count} time";
-            else
-                CounterBtn.Text = $"Clicked {count} times";
-
-            SemanticScreenReader.Announce(CounterBtn.Text);
-        }
-    }
+            Task.Run(async () =>
+            {
+                var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (status != PermissionStatus.Granted)
+                {
+                    status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                }
+            });
+		}
+	}
 }

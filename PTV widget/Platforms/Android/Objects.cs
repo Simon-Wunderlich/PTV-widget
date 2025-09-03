@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace PTV_widget.Platforms.Android.Resources
 {
-	internal record Departure(string RouteName, int RouteNumber, DateTime eta, bool isAtPlatform);
+	record Departure(string RouteName, int RouteNumber, DateTime eta, bool isAtPlatform, string destination);
 	internal record Stop(string stop_name, int stop_id, RouteType route_type, Dictionary<int, string> routes);
 	internal enum RouteType
 	{
