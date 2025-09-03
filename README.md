@@ -4,7 +4,7 @@ Android widget developed using .NET MAUI to display next departures for any publ
 
 
 
-!\[Widget](https://github.com/Simon-Wunderlich/PTV-widget/raw/master/PTV%20widget/Resources/Images/preview.png)
+![Widget](https://github.com/Simon-Wunderlich/PTV-widget/raw/master/PTV%20widget/Resources/Images/preview.png)
 
 ## Acknowledgements
 
