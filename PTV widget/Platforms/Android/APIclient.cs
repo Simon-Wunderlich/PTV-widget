@@ -48,13 +48,16 @@ namespace PTV_widget.Platforms.Android
 			return routes;
 		}
 
-		internal async static Task<Stop> getClosestStop(double _long, double _lat)
+		internal async static Task<Stop?> getClosestStop(double _long, double _lat)
 		{
 			using var client = new HttpClient(new Xamarin.Android.Net.AndroidMessageHandler());
 			client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/stops/location/{_lat},{_long}?max_results=1"));
 			var response = await client.GetAsync(client.BaseAddress);
 			string jsonString = await response.Content.ReadAsStringAsync();
 			JObject respObj = JObject.Parse(jsonString);
+
+			if (respObj["stops"].Count() == 0)
+				return null;
 
 			int id = int.Parse(respObj["stops"].First()["stop_id"].ToString());
 			int type = int.Parse(respObj["stops"].First()["route_type"].ToString());

@@ -23,7 +23,7 @@ public class Widget : AppWidgetProvider
 	static int platformNum = 0;
 	static string destination = "";
 	static List<Departure> currentDepartures = new List<Departure>();
-	static Stop closestStop;
+	static Stop? closestStop;
 
 	public override async void OnUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds)
     {
@@ -42,6 +42,20 @@ public class Widget : AppWidgetProvider
 		try
 		{
 			closestStop = await GetClosestStop();
+			if (closestStop == null)
+			{
+				views.SetTextViewText(PTV_widget.Resource.Id.routeName, "Not found");
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 16f);
+				views.SetTextViewText(PTV_widget.Resource.Id.stopName, "Not found");
+				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, "--");
+				views.SetTextViewText(PTV_widget.Resource.Id.minsText, " mins");
+				views.SetViewVisibility(PTV_widget.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
+				foreach (var appWidgetId in appWidgetIds)
+				{
+					appWidgetManager.UpdateAppWidget(appWidgetId, views);
+				}
+				throw new Exception("No stops found");
+			}
 			currentDepartures = await APIclient.getNextDeparture(closestStop);
 			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
 		}
@@ -52,6 +66,18 @@ public class Widget : AppWidgetProvider
 	{
 		try
 		{
+			if (currentDepartures.Count == 0)
+			{
+				views.SetTextViewText(PTV_widget.Resource.Id.routeName, "Not found");
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 16f);
+				views.SetTextViewText(PTV_widget.Resource.Id.stopName, closestStop.stop_name);
+				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, "--");
+				views.SetTextViewText(PTV_widget.Resource.Id.minsText, " mins");
+				throw new Exception("Not found");
+			}
+			if (closestStop.stop_name != stop_name)
+				platformNum = 0;
+
 			Departure departure = currentDepartures[platformNum];
 			//Update Stop
 			if (closestStop.stop_name != stop_name || departure.destination != destination)
@@ -126,14 +152,13 @@ public class Widget : AppWidgetProvider
 			{
 				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 32f);
 			}
-
-			views.SetViewVisibility(PTV_widget.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
-			foreach (var appWidgetId in appWidgetIds)
-			{
-				appWidgetManager.UpdateAppWidget(appWidgetId, views);
-			}
 		}
 		catch { }
+		views.SetViewVisibility(PTV_widget.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
+		foreach (var appWidgetId in appWidgetIds)
+		{
+			appWidgetManager.UpdateAppWidget(appWidgetId, views);
+		}
 	}
 
 	private PendingIntent GetPendingSelfIntent(Context context, String action)
@@ -171,10 +196,9 @@ public class Widget : AppWidgetProvider
 		}
 	}
 
-    internal async Task<Stop> GetClosestStop()
+    internal async Task<Stop?> GetClosestStop()
     {
-		//Location loc = await GetCurrentLocation();
-		Location loc = new Location(-37.77804301206088, 144.998424855089);
+		Location loc = await GetCurrentLocation();
 		return await APIclient.getClosestStop(loc.Longitude, loc.Latitude);
 	}
 
