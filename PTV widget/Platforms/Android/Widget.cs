@@ -9,21 +9,18 @@ using Android.Util;
 
 namespace Maui.Widgets;
 
-[BroadcastReceiver(Label = "PTV Departures", Exported = true)]
-[IntentFilter(new string[] { "android.appwidget.action.APPWIDGET_UPDATE" })]
-[MetaData("android.appwidget.provider", Resource = "@xml/widget")]
-[Service(Exported = true)]
-
-public class Widget : AppWidgetProvider
+public abstract class Widget : AppWidgetProvider
 {
-    static string route_name = "";
-    static string stop_name = "";
-    static string route_color = "#000";
-    static int etaMins = -1;
-	static int platformNum = 0;
-	static string destination = "";
-	static List<Departure> currentDepartures = new List<Departure>();
-	static Stop? closestStop;
+
+	static Dictionary<RouteType, WidgetInfo> info = new Dictionary<RouteType, WidgetInfo>()
+	{
+		{ RouteType.Train, new WidgetInfo()},
+		{RouteType.Tram, new WidgetInfo()},
+		{RouteType.Bus, new WidgetInfo()},
+		{RouteType.Vline, new WidgetInfo()},
+		{RouteType.NightBus, new WidgetInfo()},
+	};
+	internal virtual RouteType routeType { get;}
 
 	public override async void OnUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds)
     {
@@ -41,8 +38,8 @@ public class Widget : AppWidgetProvider
 		
 		try
 		{
-			closestStop = await GetClosestStop();
-			if (closestStop == null)
+			info[routeType].closestStop = await GetClosestStop();
+			if (info[routeType].closestStop == null)
 			{
 				views.SetTextViewText(PTV_widget.Resource.Id.routeName, "Not found");
 				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 16f);
@@ -56,7 +53,7 @@ public class Widget : AppWidgetProvider
 				}
 				throw new Exception("No stops found");
 			}
-			currentDepartures = await APIclient.getNextDeparture(closestStop);
+			info[routeType].currentDepartures = await APIclient.getNextDeparture(info[routeType].closestStop);
 			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
 		}
 		catch { }
@@ -66,42 +63,42 @@ public class Widget : AppWidgetProvider
 	{
 		try
 		{
-			if (currentDepartures.Count == 0)
+			if (info[routeType].currentDepartures.Count == 0)
 			{
 				views.SetTextViewText(PTV_widget.Resource.Id.routeName, "Not found");
 				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 16f);
-				views.SetTextViewText(PTV_widget.Resource.Id.stopName, closestStop.stop_name);
+				views.SetTextViewText(PTV_widget.Resource.Id.stopName, info[routeType].closestStop.stop_name);
 				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, "--");
 				views.SetTextViewText(PTV_widget.Resource.Id.minsText, " mins");
 				throw new Exception("Not found");
 			}
-			if (closestStop.stop_name != stop_name)
-				platformNum = 0;
+			if (info[routeType].closestStop.stop_name[..Math.Min(11, info[routeType].closestStop.stop_name.Length)] != info[routeType].stop_name[..Math.Min(11, info[routeType].stop_name.Length)])
+				info[routeType].platformNum = 0;
 
-			Departure departure = currentDepartures[platformNum];
+			Departure departure = info[routeType].currentDepartures[info[routeType].platformNum];
 			//Update Stop
-			if (closestStop.stop_name != stop_name || departure.destination != destination)
+			if (info[routeType].closestStop.stop_name != info[routeType].stop_name || departure.destination != info[routeType].destination)
 			{
-				stop_name = closestStop.stop_name;
-				destination = departure.destination;
-				string output = stop_name + " • " + destination;
-				if (stop_name.Length > 13)
-					stop_name = stop_name.Substring(0, 11) + "...";
-				output = stop_name + " • " + destination;
+				info[routeType].stop_name = info[routeType].closestStop.stop_name;
+				info[routeType].destination = departure.destination;
+				string output = info[routeType].stop_name + " • " + info[routeType].destination;
+				if (info[routeType].stop_name.Length > 13)
+					info[routeType].stop_name = info[routeType].stop_name.Substring(0, 11) + "...";
+				output = info[routeType].stop_name + " • " + info[routeType].destination;
 				if (output.Length > 27)
 					output = output.Substring(0, 25) + "...";
 				views.SetTextViewText(PTV_widget.Resource.Id.stopName, output);
 			}
 
 			//Update route details
-			if (departure.RouteName != route_name)
+			if (departure.RouteName != info[routeType].route_name)
 			{
-				route_name = departure.RouteName;
-				route_color = GetRouteColour(departure.RouteNumber, closestStop.route_type);
-				views.SetInt(PTV_widget.Resource.Id.colourStrip, "setBackgroundColor", Android.Graphics.Color.ParseColor(route_color));
+				info[routeType].route_name = departure.RouteName;
+				info[routeType].route_color = GetRouteColour(departure.RouteNumber);
+				views.SetInt(PTV_widget.Resource.Id.colourStrip, "setBackgroundColor", Android.Graphics.Color.ParseColor(info[routeType].route_color));
 
-				views.SetTextViewText(PTV_widget.Resource.Id.routeName, route_name);
 			}
+				views.SetTextViewText(PTV_widget.Resource.Id.routeName, info[routeType].route_name);
 
 			//Update eta
 			string etaStr = " mins";
@@ -112,46 +109,47 @@ public class Widget : AppWidgetProvider
 			}
 			else
 			{
-				etaMins = calcEta(departure.eta);
-				if (etaMins >= 60)
+				info[routeType].etaMins = calcEta(departure.eta);
+				if (info[routeType].etaMins >= 60)
 				{
-					etaMins /= 60;
-					if (etaMins == 1)
+					info[routeType].etaMins /= 60;
+					if (info[routeType].etaMins == 1)
 						etaStr = " hr";
 					else
 						etaStr = " hrs";
 				}
 				else
 				{
-					if (etaMins == 1)
+					if (info[routeType].etaMins == 1)
 						etaStr = " min";
 					else
 						etaStr = " mins";
 
 				}
 				views.SetTextViewText(PTV_widget.Resource.Id.minsText, etaStr);
-				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, etaMins.ToString());
+				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, info[routeType].etaMins.ToString());
 
 
 			}
 
-			int availableSpace = 170 - 10 * etaMins.ToString().Length;
+			int availableSpace = 160 - 10 * info[routeType].etaMins.ToString().Length;
 			availableSpace += 40 - 10 * etaStr.Length;
 			if (departure.isAtPlatform)
 				availableSpace = 160;
-			if (route_name.Length > 5 && route_name.Length < 14)
+			if (info[routeType].route_name.Length > 5 && info[routeType].route_name.Length < 11)
 			{
-				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / route_name.Length));
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / info[routeType].route_name.Length));
 			}
-			else if (route_name.Length >= 14)
+			else if (info[routeType].route_name.Length >= 11)
 			{
-				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / 14));
-				route_name = route_name.Substring(0, 13) + "...";
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / 10.5f));
+				info[routeType].route_name = info[routeType].route_name.Substring(0, 10) + "...";
 			}
 			else
 			{
 				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 32f);
 			}
+			views.SetTextViewText(PTV_widget.Resource.Id.routeName, info[routeType].route_name);
 		}
 		catch { }
 		views.SetViewVisibility(PTV_widget.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
@@ -182,16 +180,16 @@ public class Widget : AppWidgetProvider
 		}
 		else if (intent?.Action == "action.NEXT_PLATFORM")
 		{
-			platformNum++;
-			if (platformNum > currentDepartures.Count - 1)
-				platformNum = 0;
+			info[routeType].platformNum++;
+			if (info[routeType].platformNum > info[routeType].currentDepartures.Count - 1)
+				info[routeType].platformNum = 0;
 			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
 		}
 		else if (intent?.Action == "action.PREV_PLATFORM")
 		{
-			platformNum--;
-			if (platformNum < 0)
-				platformNum = currentDepartures.Count - 1;
+			info[routeType].platformNum--;
+			if (info[routeType].platformNum < 0)
+				info[routeType].platformNum = info[routeType].currentDepartures.Count - 1;
 			SetWidgetInfo(views, appWidgetManager, appWidgetIds);
 		}
 	}
@@ -199,69 +197,13 @@ public class Widget : AppWidgetProvider
     internal async Task<Stop?> GetClosestStop()
     {
 		Location loc = await GetCurrentLocation();
-		return await APIclient.getClosestStop(loc.Longitude, loc.Latitude);
+		return await APIclient.getClosestStop(loc.Longitude, loc.Latitude, routeType);
 	}
 
-    internal string GetRouteColour(int routeNum, RouteType type)
-    {
-		switch(type)
-		{
-			case RouteType.Train:
-				if ((new[] { 1, 2, 7, 9 }).Contains(routeNum))
-					return "#b8bf2e";
-				else if ((new[] { 3, 14, 15 }).Contains(routeNum))
-					return "#ffbe00";
-				else if ((new[] { 4, 11 }).Contains(routeNum))
-					return "#279fd5";
-				else if ((new[] { 5, 8 }).Contains(routeNum))
-					return "#be1014";
-				else if ((new[] { 6, 13, 16, 17 }).Contains(routeNum))
-					return "#3d8825";
-				else if (routeNum == 721)
-					return "#65baf7";
-				else 
-					return "#000000";
-			case RouteType.Tram:
-				switch (routeNum)
-				{
-					case 721:return "#b5c525";
-					case 722: return "#f27f25";
-					case 724: return "#fdd962";
-					case 725: return "#8a4c74";
-					case 887: return "#34bccc";
-					case 897: return "#498057";
-					case 909: return "#05a76e";
-					case 913: return "#af7964";
-					case 940: return "#eb8cb7";
-					case 947: return "#99b5a6";
-					case 958: return "#079bd5";
-					case 976: return "#877bbd";
-					case 1002: return "#bcd433";
-					case 1041: return "#db397f";
-					case 1083: return "#e33f38";
-					case 1880: return "#4f48a3";
-					case 1881: return "#fbba11";
-					case 2903: return "#424244";
-					case 3343: return "#87c3a1";
-					case 8314: return "#028692";
-					case 11529: return "#7f868c";
-					case 11544: return "#004d6c";
-					case 15833: return "#7fd3f1";
-					case 15834: return "#743718";
-					default: return "#000000";
-				}
-			case RouteType.Bus:
-				return "#ff8000";
-			case RouteType.Vline:
-				return "#8f1a95";
-			case RouteType.NightBus:
-				return "#ff8200";
-			default:
-				return "#000000";
-		}
-	}
+	internal abstract string GetRouteColour(int routeNum);
 
-    internal int calcEta(DateTime dt)
+
+	internal int calcEta(DateTime dt)
     {
 		return (int)MathF.Ceiling((float)dt.Subtract(DateTime.Now).TotalSeconds/60f);
 	}

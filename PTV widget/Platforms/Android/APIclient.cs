@@ -48,10 +48,10 @@ namespace PTV_widget.Platforms.Android
 			return routes;
 		}
 
-		internal async static Task<Stop?> getClosestStop(double _long, double _lat)
+		internal async static Task<Stop?> getClosestStop(double _long, double _lat, RouteType route_type)
 		{
 			using var client = new HttpClient(new Xamarin.Android.Net.AndroidMessageHandler());
-			client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/stops/location/{_lat},{_long}?max_results=1"));
+			client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/stops/location/{_lat},{_long}?max_results=1&route_types={(int)route_type}&max_distance=1000"));
 			var response = await client.GetAsync(client.BaseAddress);
 			string jsonString = await response.Content.ReadAsStringAsync();
 			JObject respObj = JObject.Parse(jsonString);
@@ -76,41 +76,52 @@ namespace PTV_widget.Platforms.Android
 
 		internal async static Task<List<Departure>> getNextDeparture(Stop stop)
 		{
-			List<Departure> departures = new List<Departure>();
-			List<string> platforms = new List<string>();
-
-			using var client = new HttpClient(new Xamarin.Android.Net.AndroidMessageHandler());
-			client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/departures/route_type/{(int)stop.route_type}/stop/{stop.stop_id}?max_results=1&expand=0"));
-			var response = await client.GetAsync(client.BaseAddress);
-			string jsonString = await response.Content.ReadAsStringAsync();
-			JObject respObj = JObject.Parse(jsonString);
-
-			int route_num;
-			string route_name;
-			DateTime eta;
-			bool isAtPlatform;
-			string dest;
-			foreach (var dep in respObj["departures"])
+			try
 			{
-				if (platforms.Contains(dep["direction_id"].ToString()))
-					continue;
+				List<Departure> departures = new List<Departure>();
+				List<string> platforms = new List<string>();
 
-				route_num = int.Parse(dep["route_id"].ToString());
-				route_name = stop.routes[route_num];
-				string etaStr = dep["estimated_departure_utc"].ToString();
-				if (etaStr == "")
-					etaStr = dep["scheduled_departure_utc"].ToString();
-				eta = DateTime.Parse(etaStr).ToLocalTime();
-				isAtPlatform = bool.Parse(dep["at_platform"].ToString());
+				using var client = new HttpClient(new Xamarin.Android.Net.AndroidMessageHandler());
+				client.BaseAddress = new Uri("https://timetableapi.ptv.vic.gov.au" + addCredentials($"/v3/departures/route_type/{(int)stop.route_type}/stop/{stop.stop_id}?max_results=1&expand=0"));
 
-				string dirNum = dep["direction_id"].ToString();
-				var destObj = respObj["directions"][dirNum];
-				dest = destObj["direction_name"].ToString();
+				var response = await client.GetAsync(client.BaseAddress);
+				string jsonString = await response.Content.ReadAsStringAsync();
+				JObject respObj = JObject.Parse(jsonString);
 
-				platforms.Add(dep["direction_id"].ToString());
-				departures.Add(new Departure(route_name, route_num, eta, isAtPlatform, dest));
+				int route_num;
+				string route_name;
+				DateTime eta;
+				bool isAtPlatform;
+				string dest;
+				foreach (var dep in respObj["departures"])
+				{
+					if (platforms.Contains(dep["direction_id"].ToString()))
+						continue;
+
+					route_num = int.Parse(dep["route_id"].ToString());
+					if (!stop.routes.ContainsKey(route_num))
+						continue;
+					route_name = stop.routes[route_num];
+					string etaStr = dep["estimated_departure_utc"].ToString();
+					if (etaStr == "")
+						etaStr = dep["scheduled_departure_utc"].ToString();
+					eta = DateTime.Parse(etaStr).ToLocalTime();
+					isAtPlatform = bool.Parse(dep["at_platform"].ToString());
+
+					string dirNum = dep["direction_id"].ToString();
+					var destObj = respObj["directions"][dirNum];
+					dest = destObj["direction_name"].ToString();
+
+					platforms.Add(dep["direction_id"].ToString());
+					departures.Add(new Departure(route_name, route_num, eta, isAtPlatform, dest));
+				}
+				return departures;
 			}
-			return departures;
+			catch (Exception e)
+			{
+
+				throw;
+			}
 
 
 		}
