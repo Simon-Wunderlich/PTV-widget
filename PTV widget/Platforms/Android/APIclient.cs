@@ -37,7 +37,7 @@ namespace PTV_widget.Platforms.Android
 				int route_num = int.Parse(route["route_id"].ToString());
 				// Skip if not distinct
 				if (routes.ContainsKey(route_num))
-					continue
+					continue;
 				string route_name;
 				// If train, use route name
 				if (route["route_type"].ToString() == "0")
@@ -82,7 +82,7 @@ namespace PTV_widget.Platforms.Android
 			// If bus-ish stop, only keep unique part of name
 			// Original: {side street} / {main street}
 			// Formatted: {side street}
-			else if ((RouteType)type == RouteType.Bus || (RouteType)type == RouteType.NightBus)
+			else if ((RouteType)route_type == RouteType.Bus || (RouteType)route_type == RouteType.NightBus)
 				name = Regex.Replace(name, "/(.+?)$", "");
 
 			// Gets route name for each route number

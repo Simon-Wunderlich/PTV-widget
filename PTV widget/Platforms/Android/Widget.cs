@@ -1,6 +1,7 @@
 ﻿using Android.App;
 using Android.Appwidget;
 using Android.Content;
+using Android.OS;
 using Android.Widget;
 using PTV_widget;
 using PTV_widget.Platforms.Android;
@@ -48,10 +49,10 @@ public abstract class Widget : AppWidgetProvider
 			// If null, set to error state
 			if (info[routeType].closestStop == null)
 			{
-				info[routeType].stop_name = ""
+				info[routeType].stop_name = "";
 				views.SetTextViewText(PTV_widget.Resource.Id.routeName, "Not found");
-				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 16f);
-				views.SetTextViewText(PTV_widget.Resource.Id.stopName, "Not found");
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 14f);
+				views.SetTextViewText(PTV_widget.Resource.Id.stopName, "No " + routeType + " found");
 				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, "--");
 				views.SetTextViewText(PTV_widget.Resource.Id.minsText, " mins");
 				views.SetViewVisibility(PTV_widget.Resource.Id.indeterminateBar, Android.Views.ViewStates.Invisible);
@@ -76,11 +77,13 @@ public abstract class Widget : AppWidgetProvider
 	{
 		try
 		{
+			Bundle options = appWidgetManager.GetAppWidgetOptions(appWidgetIds.First());
+			int width = options != null ? options.GetInt(AppWidgetManager.OptionAppwidgetMinWidth, 0) : 0;
 			// If no departures at stop, error state
 			if (info[routeType].currentDepartures.Count == 0)
 			{
 				views.SetTextViewText(PTV_widget.Resource.Id.routeName, "Not found");
-				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 16f);
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 14f);
 				views.SetTextViewText(PTV_widget.Resource.Id.stopName, info[routeType].closestStop.stop_name);
 				views.SetTextViewText(PTV_widget.Resource.Id.minsNum, "--");
 				views.SetTextViewText(PTV_widget.Resource.Id.minsText, " mins");
@@ -111,7 +114,10 @@ public abstract class Widget : AppWidgetProvider
 				//If output still overflows, shorten whole string
 				if (output.Length > 27)
 					output = output.Substring(0, 25) + "...";
-				views.SetTextViewText(PTV_widget.Resource.Id.stopName, output);
+				if (width > 300)
+					views.SetTextViewText(PTV_widget.Resource.Id.stopName, info[routeType].stop_name + " • " + info[routeType].destination);
+				else
+					views.SetTextViewText(PTV_widget.Resource.Id.stopName, output);
 			}
 
 			//Update route details if details have changed
@@ -166,12 +172,12 @@ public abstract class Widget : AppWidgetProvider
 				availableSpace = 160;
 
 			// If name longer than 5 and less than 11 chars long, scale font size to length
-			if (info[routeType].route_name.Length > 5 && info[routeType].route_name.Length < 11)
+			if (info[routeType].route_name.Length > 5 && info[routeType].route_name.Length < 11 && width < 300)
 			{
 				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / info[routeType].route_name.Length));
 			}
 			// Shorten string if over 11 chars long
-			else if (info[routeType].route_name.Length >= 11)
+			else if (info[routeType].route_name.Length >= 11 && width < 300)
 			{
 				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", MathF.Round(availableSpace / 10.5f));
 				info[routeType].route_name = info[routeType].route_name.Substring(0, 10) + "...";
@@ -179,7 +185,7 @@ public abstract class Widget : AppWidgetProvider
 			// If name <= 5 chars long, use default font size
 			else
 			{
-				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 32f);
+				views.SetFloat(PTV_widget.Resource.Id.routeName, "setTextSize", 14f);
 			}
 			views.SetTextViewText(PTV_widget.Resource.Id.routeName, info[routeType].route_name);
 		}
