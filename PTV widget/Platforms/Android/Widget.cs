@@ -101,25 +101,30 @@ public abstract class Widget : AppWidgetProvider
 			{
 				info[routeType].stop_name = info[routeType].closestStop.stop_name;
 				info[routeType].destination = departure.destination;
-
-				// Combines stop name and destination
-				string output = info[routeType].stop_name + " • " + info[routeType].destination;
-
-				// Checks length of stop name to prevent overflow
-				if (info[routeType].stop_name.Length > 13) {
-					info[routeType].stop_name = info[routeType].stop_name.Substring(0, 11) + "...";
-					// Update output with shortened stop name
-					output = info[routeType].stop_name + " • " + info[routeType].destination;
-				}
-				//If output still overflows, shorten whole string
-				if (output.Length > 27)
-					output = output.Substring(0, 25) + "...";
+			
 				if (width > 300)
 					views.SetTextViewText(PTV_widget.Resource.Id.stopName, info[routeType].stop_name + " • " + info[routeType].destination);
 				else
-					views.SetTextViewText(PTV_widget.Resource.Id.stopName, output);
+				{
+
+					// Combines stop name and destination
+					string output = info[routeType].stop_name + " • " + info[routeType].destination;
+
+					// Checks length of stop name to prevent overflow
+					if (info[routeType].stop_name.Length > 13) {
+						info[routeType].stop_name = info[routeType].stop_name.Substring(0, 11) + "...";
+						// Update output with shortened stop name
+						output = info[routeType].stop_name + " • " + info[routeType].destination;
+					}
+					//If output still overflows, shorten whole string
+					if (output.Length > 27)
+						output = output.Substring(0, 25) + "...";
+					views.SetTextViewText(PTV_widget.Resource.Id.stopName, output);	
+				}
 			}
 
+			
+			
 			//Update route details if details have changed
 			if (departure.RouteName != info[routeType].route_name)
 			{
